@@ -1,6 +1,8 @@
 # assembly
 go runtime assembly library.
 
+> Linux only.
+
 ## API Overview
 ```
 func NewDwarfAssembly() (DwarfAssembly, error)
@@ -26,6 +28,12 @@ type DwarfAssembly interface {
 	SearchPluginByName(name string) (lib string, addr uint64, err error)
 	SearchPlugins() (libs []string, addrs []uint64, err error)
 }
+```
+
+### Go Test
+```
+$ go test -c -gcflags="all=-l -N" ./...
+$ ./assembly.test
 ```
 
 ### License
