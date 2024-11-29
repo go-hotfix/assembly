@@ -1,7 +1,8 @@
 # assembly
 go runtime assembly library.
 
-> Linux only.
+* Windows is not supported
+* Please keep the debugging symbols when compiling, and disable function inline `-gcflags=all=-l`
 
 ## API Overview
 ```

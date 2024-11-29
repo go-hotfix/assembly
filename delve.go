@@ -33,8 +33,7 @@ type localMemory int
 
 func (mem *localMemory) ReadMemory(data []byte, addr uint64) (int, error) {
 	buf := entryAddress(uintptr(addr), len(data))
-	copy(data, buf)
-	return len(data), nil
+	return copy(data, buf), nil
 }
 
 func (mem *localMemory) WriteMemory(addr uint64, data []byte) (int, error) {

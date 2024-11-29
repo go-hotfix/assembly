@@ -52,7 +52,12 @@ func NewDwarfAssembly() (DwarfAssembly, error) {
 
 	assembly := &dwarfAssembly{binaryInfo: proc.NewBinaryInfo(runtime.GOOS, runtime.GOARCH)}
 
-	if err = assembly.LoadImage(path, 0); nil != err {
+	var entryPoint uintptr
+	if entryPoint, err = getEntrypoint(path); nil != err {
+		return nil, err
+	}
+
+	if err = assembly.LoadImage(path, uint64(entryPoint)); nil != err {
 		return nil, err
 	}
 
