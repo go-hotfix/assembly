@@ -36,7 +36,7 @@ func (da *dwarfAssembly) loadGlobals() {
 
 	packageVars := reflect.ValueOf(da.binaryInfo).Elem().FieldByName("packageVars")
 	if packageVars.IsValid() {
-		for i := 0; i < packageVars.Len(); i++ {
+		for i, size := 0, packageVars.Len(); i < size; i++ {
 			rv := packageVars.Index(i)
 			rName := rv.FieldByName("name")
 			rAddr := rv.FieldByName("addr")

@@ -35,7 +35,7 @@ func getEntrypoint(targetModulePath string) (uintptr, error) {
 		var modulePath = syscall.UTF16ToString(modulePathUTF16Bytes[:])
 
 		if targetModulePath == modulePath {
-			return mi.EntryPoint, nil
+			return mi.BaseOfDll, nil
 		}
 
 		moduleList = append(moduleList, modulePath)

@@ -75,7 +75,7 @@ func (da *dwarfAssembly) findImageType(img *proc.Image, name string) uint64 {
 
 			typeAddr := md.types + k.Uint()
 			if typeAddr < md.types || typeAddr >= md.etypes {
-				cache[entryName] = k.Uint()
+				cache[entryName] = img.StaticBase + k.Uint()
 			} else {
 				cache[entryName] = typeAddr
 			}
@@ -124,7 +124,7 @@ func (da *dwarfAssembly) dwarfToRuntimeType(typ godwarf.Type, name string) (type
 
 	typeAddr = md.types + off
 	if typeAddr < md.types || typeAddr >= md.etypes {
-		return off, nil
+		return img.StaticBase + off, nil
 	}
 	return typeAddr, nil
 }
