@@ -100,7 +100,7 @@ func (da *dwarfAssembly) CallFunc(name string, variadic bool, args []reflect.Val
 		}
 
 		if !arg.Type().AssignableTo(inTyp) {
-			return nil, fmt.Errorf("type mismatch %d:%s", i, inName)
+			return nil, fmt.Errorf("type mismatch arg: %d:%s, except: %s, got: %s", i, inName, inTyp.String(), arg.Type().String())
 		}
 	}
 
@@ -129,18 +129,12 @@ func (da *dwarfAssembly) getFunctionArgTypes(f *proc.Function) ([]reflect.Type, 
 	if !rDwarf.IsValid() {
 		return nil, nil, nil, nil, ErrNotSupport
 	}
-	image := (*proc.Image)(unsafe.Pointer(rImage.Pointer()))
+	//image := (*proc.Image)(unsafe.Pointer(rImage.Pointer()))
 	dwarfData := (*dwarf.Data)(unsafe.Pointer(rDwarf.Pointer()))
 
-	reader := image.DwarfReader()
-	reader.Seek(dwarf.Offset(rOffset.Uint()))
-	entry, err := reader.Next()
-	if err != nil || entry == nil || entry.Tag != dwarf.TagSubprogram {
-		return nil, nil, nil, nil, fmt.Errorf("get function arg types not found %s", f.Name)
-	}
-	name, ok := entry.Val(dwarf.AttrName).(string)
-	if !ok || f.Name != name {
-		return nil, nil, nil, nil, fmt.Errorf("get function arg types name err %s:%s", f.Name, name)
+	_, args, err := funcCallArgs(f, da.binaryInfo, true)
+	if nil != err {
+		return nil, nil, nil, nil, fmt.Errorf("get function args err %s:%w", f.Name, err)
 	}
 
 	var inTyps []reflect.Type
@@ -148,36 +142,29 @@ func (da *dwarfAssembly) getFunctionArgTypes(f *proc.Function) ([]reflect.Type, 
 	var inNames []string
 	var outNames []string
 
-	for {
-		child, err := reader.Next()
-		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("get function arg types reader err %s:%s", f.Name, err.Error())
-		}
-		if child == nil || child.Tag == 0 {
-			break
-		}
-		if child.Tag != dwarf.TagFormalParameter {
-			continue
-		}
-
-		dtyp, err := entryType(dwarfData, child)
+	for _, arg := range args {
+		dtyp, err := entryType(dwarfData, arg.dwarfEntry.Entry.(*dwarf.Entry))
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("get function arg types type err %s:%w", f.Name, err)
 		}
+
+		// resolve typedef type
+		dtyp = resolveTypedef(dtyp)
+
 		dname := dwarfTypeName(dtyp)
 		rtyp, err := da.FindType(dname)
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("get function arg types type err %s(%s):%w", f.Name, dname, err)
 		}
 
-		isret, _ := child.Val(dwarf.AttrVarParam).(bool)
-		if isret {
+		if arg.isret {
 			outTyps = append(outTyps, rtyp)
-			outNames = append(outNames, dname)
+			outNames = append(outNames, arg.name)
 		} else {
 			inTyps = append(inTyps, rtyp)
-			inNames = append(inNames, dname)
+			inNames = append(inNames, arg.name)
 		}
 	}
+
 	return inTyps, outTyps, inNames, outNames, nil
 }

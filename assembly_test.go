@@ -1,6 +1,7 @@
 package assembly
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
 	"testing"
@@ -8,6 +9,34 @@ import (
 
 func testAdd(a, b int) int {
 	return a + b
+}
+
+func testMax(a int, nums ...int) int {
+	if len(nums) == 0 {
+		return a
+	}
+
+	var _max = a
+	for _, n := range nums {
+		if n > _max {
+			_max = n
+		}
+	}
+	return _max
+}
+
+func genericMin[T cmp.Ordered](a T, nums ...T) T {
+	if len(nums) == 0 {
+		return a
+	}
+
+	var _min = a
+	for _, n := range nums {
+		if n < _min {
+			_min = n
+		}
+	}
+	return _min
 }
 
 var testGlobalInt = 11001
@@ -29,6 +58,8 @@ func TestDwarfAssembly(t *testing.T) {
 	var testCases = []TestCaseFunc{
 		AssemblyTestFindType,
 		AssemblyTestFindFunc,
+		AssemblyTestFindVariadicFunc,
+		AssemblyTestFindGenericVariadicFunc,
 		AssemblyTestGlobalVar,
 		AssemblyTestPlugin,
 	}
@@ -85,16 +116,66 @@ func AssemblyTestFindFunc(t *testing.T, asm DwarfAssembly) {
 
 	callResults, err := asm.CallFunc("github.com/go-hotfix/assembly.testAdd", false, []reflect.Value{reflect.ValueOf(100), reflect.ValueOf(1)})
 	if nil != err {
-		t.Fatalf("CallFunc() error: %v", err)
+		t.Fatalf("CallFunc(%s) error: %v", wantType.String(), err)
 	}
 
 	wantValue := testAdd(100, 1)
 	gotValue := callResults[0].Int()
 
 	if int64(wantValue) != gotValue {
-		t.Fatalf("CallFunc() got = %v, want %v", gotValue, wantValue)
+		t.Fatalf("CallFunc(%s) got = %v, want %v", wantType.String(), gotValue, wantValue)
 	}
 
+}
+
+func AssemblyTestFindVariadicFunc(t *testing.T, asm DwarfAssembly) {
+	asmType, err := asm.FindFuncType("github.com/go-hotfix/assembly.testMax", true)
+	if nil != err {
+		t.Fatalf("FindFuncType() error: %v", err)
+	}
+
+	wantType := reflect.TypeOf(testMax)
+
+	if wantType != asmType {
+		t.Fatalf("FindFuncType() got = %v, want %v", asmType, wantType)
+	}
+
+	callResults, err := asm.CallFunc("github.com/go-hotfix/assembly.testMax", false, []reflect.Value{reflect.ValueOf(100), reflect.ValueOf([]int{1})})
+	if nil != err {
+		t.Fatalf("CallFunc(%s) error: %v", wantType.String(), err)
+	}
+
+	wantValue := testMax(100, 1)
+	gotValue := callResults[0].Int()
+
+	if int64(wantValue) != gotValue {
+		t.Fatalf("CallFunc(%s) got = %v, want %v", wantType.String(), gotValue, wantValue)
+	}
+}
+
+func AssemblyTestFindGenericVariadicFunc(t *testing.T, asm DwarfAssembly) {
+	asmType, err := asm.FindFuncType("github.com/go-hotfix/assembly.genericMin[int]", true)
+	if nil != err {
+		t.Fatalf("FindFuncType() error: %v", err)
+	}
+
+	wantType := reflect.TypeOf(genericMin[int])
+
+	if wantType != asmType {
+		t.Fatalf("FindFuncType() got = %v, want %v", asmType, wantType)
+	}
+
+	callResults, err := asm.CallFunc("github.com/go-hotfix/assembly.genericMin[int]", false, []reflect.Value{reflect.ValueOf(100), reflect.ValueOf([]int{1})})
+	if nil != err {
+		t.Fatalf("CallFunc(%s) error: %v", wantType.String(), err)
+	}
+
+	wantValue := genericMin(100, 1)
+	gotValue := callResults[0].Int()
+
+	if int64(wantValue) != gotValue {
+		t.Fatalf("CallFunc(%s) got = %v, want %v", wantType.String(), gotValue, wantValue)
+	}
 }
 
 func AssemblyTestGlobalVar(t *testing.T, asm DwarfAssembly) {
@@ -144,7 +225,9 @@ func AssemblyTestPlugin(t *testing.T, asm DwarfAssembly) {
 	}
 
 	for i, lib := range libs {
-		fmt.Println(lib, addrs[i])
+		if len(lib) > 0 {
+			fmt.Println(lib, addrs[i])
+		}
 	}
 
 	_, _, err = asm.SearchPluginByName("not-found-image")

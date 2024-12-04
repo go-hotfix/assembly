@@ -17,6 +17,14 @@ type ModuleData struct {
 	typemapVar    *proc.Variable
 }
 
+type funcCallArg struct {
+	name       string
+	typ        godwarf.Type
+	off        int64
+	dwarfEntry *godwarf.Tree // non-nil if Go 1.17+
+	isret      bool
+}
+
 //go:linkname findType github.com/go-delve/delve/pkg/proc.(*BinaryInfo).findType
 func findType(bi *proc.BinaryInfo, name string) (godwarf.Type, error)
 
@@ -28,6 +36,9 @@ func imageToModuleData(bi *proc.BinaryInfo, image *proc.Image, mds []ModuleData)
 
 //go:linkname dwarfToRuntimeType github.com/go-delve/delve/pkg/proc.dwarfToRuntimeType
 func dwarfToRuntimeType(bi *proc.BinaryInfo, mem proc.MemoryReadWriter, typ godwarf.Type) (typeAddr uint64, typeKind uint64, found bool, err error)
+
+//go:linkname funcCallArgs github.com/go-delve/delve/pkg/proc.funcCallArgs
+func funcCallArgs(fn *proc.Function, bi *proc.BinaryInfo, includeRet bool) (argFrameSize int64, formalArgs []funcCallArg, err error)
 
 type localMemory int
 
@@ -54,6 +65,19 @@ func dwarfTypeName(dtyp dwarf.Type) string {
 			return name
 		}
 		return dtyp.String()
+	}
+}
+
+func resolveTypedef(typ dwarf.Type) dwarf.Type {
+	for {
+		switch tt := typ.(type) {
+		case *dwarf.TypedefType:
+			typ = tt.Type
+		case *dwarf.QualType:
+			typ = tt.Type
+		default:
+			return typ
+		}
 	}
 }
 
