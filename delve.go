@@ -68,12 +68,14 @@ func dwarfTypeName(dtyp dwarf.Type) string {
 	}
 }
 
-func resolveTypedef(typ dwarf.Type) dwarf.Type {
+func resolveTypedef(typ godwarf.Type) godwarf.Type {
 	for {
 		switch tt := typ.(type) {
-		case *dwarf.TypedefType:
+		case *godwarf.TypedefType:
 			typ = tt.Type
-		case *dwarf.QualType:
+		case *godwarf.QualType:
+			typ = tt.Type
+		case *godwarf.ParametricType:
 			typ = tt.Type
 		default:
 			return typ
