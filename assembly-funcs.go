@@ -1,10 +1,8 @@
 package assembly
 
 import (
-	"debug/dwarf"
 	"fmt"
 	"reflect"
-	"unsafe"
 
 	"github.com/go-delve/delve/pkg/proc"
 )
@@ -116,25 +114,10 @@ func (da *dwarfAssembly) findFunc(name string) (*proc.Function, error) {
 }
 
 func (da *dwarfAssembly) getFunctionArgTypes(f *proc.Function) ([]reflect.Type, []reflect.Type, []string, []string, error) {
-	rOffset := reflect.ValueOf(f).Elem().FieldByName("offset")
-	rCU := reflect.ValueOf(f).Elem().FieldByName("cu")
-	if !rOffset.IsValid() || !rCU.IsValid() {
-		return nil, nil, nil, nil, ErrNotSupport
-	}
-	rImage := rCU.Elem().FieldByName("image")
-	if !rImage.IsValid() {
-		return nil, nil, nil, nil, ErrNotSupport
-	}
-	rDwarf := rImage.Elem().FieldByName("dwarf")
-	if !rDwarf.IsValid() {
-		return nil, nil, nil, nil, ErrNotSupport
-	}
-	//image := (*proc.Image)(unsafe.Pointer(rImage.Pointer()))
-	dwarfData := (*dwarf.Data)(unsafe.Pointer(rDwarf.Pointer()))
 
 	_, args, err := funcCallArgs(f, da.binaryInfo, true)
 	if nil != err {
-		return nil, nil, nil, nil, fmt.Errorf("get function args err %s:%w", f.Name, err)
+		return nil, nil, nil, nil, fmt.Errorf("resolve function args failed: %s:%w", f.Name, err)
 	}
 
 	var inTyps []reflect.Type
@@ -142,19 +125,11 @@ func (da *dwarfAssembly) getFunctionArgTypes(f *proc.Function) ([]reflect.Type, 
 	var inNames []string
 	var outNames []string
 
-	for _, arg := range args {
-		dtyp, err := entryType(dwarfData, arg.dwarfEntry.Entry.(*dwarf.Entry))
-		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("get function arg types type err %s:%w", f.Name, err)
-		}
-
-		// resolve typedef type
-		dtyp = resolveTypedef(dtyp)
-
-		dname := dwarfTypeName(dtyp)
+	for idx, arg := range args {
+		dname := arg.typ.String()
 		rtyp, err := da.FindType(dname)
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("get function arg types type err %s(%s):%w", f.Name, dname, err)
+			return nil, nil, nil, nil, fmt.Errorf("resolve function arg failed: %s arg: %d: (%s %s): %w", f.Name, idx, arg.name, dname, err)
 		}
 
 		if arg.isret {
