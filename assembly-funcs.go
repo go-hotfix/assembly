@@ -127,7 +127,7 @@ func (da *dwarfAssembly) getFunctionArgTypes(f *proc.Function) ([]reflect.Type, 
 
 	for idx, arg := range args {
 		argType := resolveTypedef(arg.typ)
-		rtyp, err := da.FindType(argType.String())
+		rtyp, err := da.FindType(godwarfTypeName(argType))
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("resolve function arg failed: %s arg: %d: (%s %s): %w", f.Name, idx, arg.name, argType.String(), err)
 		}

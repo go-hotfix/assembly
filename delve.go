@@ -68,6 +68,23 @@ func dwarfTypeName(dtyp dwarf.Type) string {
 	}
 }
 
+func godwarfTypeName(dtyp godwarf.Type) string {
+	switch dtyp := dtyp.(type) {
+	case *godwarf.StructType:
+		return dtyp.StructName
+	case *godwarf.PtrType:
+		return "*" + godwarfTypeName(dtyp.Type)
+	case *godwarf.EnumType:
+		return dtyp.EnumName
+	default:
+		name := dtyp.Common().Name
+		if name != "" {
+			return name
+		}
+		return dtyp.String()
+	}
+}
+
 func resolveTypedef(typ godwarf.Type) godwarf.Type {
 	for {
 		switch tt := typ.(type) {
