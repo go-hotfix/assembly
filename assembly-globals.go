@@ -67,11 +67,11 @@ func (da *dwarfAssembly) loadGlobals() {
 				continue
 			}
 
-			dtyp, err := entryType(dwarfData, entry)
+			dtyp, err := entryType(dwarfData, entry, len(da.binaryInfo.Images)-1)
 			if err != nil {
 				continue
 			}
-			dname := dwarfTypeName(dtyp)
+			dname := godwarfTypeName(dtyp)
 			if dname == "<unspecified>" || dname == "" {
 				continue
 			}
