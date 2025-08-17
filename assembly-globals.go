@@ -54,7 +54,6 @@ func (da *dwarfAssembly) loadGlobals() {
 				continue
 			}
 			image := (*proc.Image)(unsafe.Pointer(rImage.Pointer()))
-			dwarfData := (*dwarf.Data)(unsafe.Pointer(rDwarf.Pointer()))
 
 			reader := image.DwarfReader()
 			reader.Seek(dwarf.Offset(rOffset.Uint()))
@@ -67,10 +66,16 @@ func (da *dwarfAssembly) loadGlobals() {
 				continue
 			}
 
-			dtyp, err := entryType(dwarfData, entry, len(da.binaryInfo.Images)-1)
+			off, ok := entry.Val(dwarf.AttrType).(dwarf.Offset)
+			if !ok {
+				continue
+			}
+
+			dtyp, err := image.Type(off)
 			if err != nil {
 				continue
 			}
+
 			dname := godwarfTypeName(dtyp)
 			if dname == "<unspecified>" || dname == "" {
 				continue

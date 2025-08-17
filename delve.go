@@ -1,8 +1,6 @@
 package assembly
 
 import (
-	"debug/dwarf"
-	"fmt"
 	"reflect"
 	"unsafe"
 
@@ -81,14 +79,6 @@ func resolveTypedef(typ godwarf.Type) godwarf.Type {
 			return typ
 		}
 	}
-}
-
-func entryType(data *dwarf.Data, entry *dwarf.Entry, index int) (godwarf.Type, error) {
-	off, ok := entry.Val(dwarf.AttrType).(dwarf.Offset)
-	if !ok {
-		return nil, fmt.Errorf("unable to find type offset for entry")
-	}
-	return godwarf.ReadType(data, index, off, make(map[dwarf.Offset]godwarf.Type))
 }
 
 func entryAddress(p uintptr, l int) []byte {
