@@ -1,8 +1,6 @@
 package assembly
 
 import (
-	"debug/dwarf"
-	"fmt"
 	"reflect"
 	"unsafe"
 
@@ -51,13 +49,13 @@ func (mem *localMemory) WriteMemory(addr uint64, data []byte) (int, error) {
 	return 0, ErrNotSupport
 }
 
-func dwarfTypeName(dtyp dwarf.Type) string {
+func godwarfTypeName(dtyp godwarf.Type) string {
 	switch dtyp := dtyp.(type) {
-	case *dwarf.StructType:
+	case *godwarf.StructType:
 		return dtyp.StructName
-	case *dwarf.PtrType:
-		return "*" + dwarfTypeName(dtyp.Type)
-	case *dwarf.EnumType:
+	case *godwarf.PtrType:
+		return "*" + godwarfTypeName(dtyp.Type)
+	case *godwarf.EnumType:
 		return dtyp.EnumName
 	default:
 		name := dtyp.Common().Name
@@ -81,14 +79,6 @@ func resolveTypedef(typ godwarf.Type) godwarf.Type {
 			return typ
 		}
 	}
-}
-
-func entryType(data *dwarf.Data, entry *dwarf.Entry) (dwarf.Type, error) {
-	off, ok := entry.Val(dwarf.AttrType).(dwarf.Offset)
-	if !ok {
-		return nil, fmt.Errorf("unable to find type offset for entry")
-	}
-	return data.Type(off)
 }
 
 func entryAddress(p uintptr, l int) []byte {
