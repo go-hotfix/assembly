@@ -7,6 +7,16 @@ import (
 	"testing"
 )
 
+type foo struct {
+	a int
+}
+
+func (f foo) bar() int {
+	return f.a
+}
+
+var fooInstance = foo{a: 999}
+
 func testAdd(a, b int) int {
 	return a + b
 }
@@ -103,29 +113,55 @@ func AssemblyTestFindType(t *testing.T, asm DwarfAssembly) {
 
 func AssemblyTestFindFunc(t *testing.T, asm DwarfAssembly) {
 
-	asmType, err := asm.FindFuncType("github.com/go-hotfix/assembly.testAdd", false)
-	if nil != err {
-		t.Fatalf("FindFuncType() error: %v", err)
+	{
+		asmType, err := asm.FindFuncType("github.com/go-hotfix/assembly.testAdd", false)
+		if nil != err {
+			t.Fatalf("FindFuncType() error: %v", err)
+		}
+
+		wantType := reflect.TypeOf(testAdd)
+
+		if wantType != asmType {
+			t.Fatalf("FindFuncType() got = %v, want %v", asmType, wantType)
+		}
+
+		callResults, err := asm.CallFunc("github.com/go-hotfix/assembly.testAdd", false, []reflect.Value{reflect.ValueOf(100), reflect.ValueOf(1)})
+		if nil != err {
+			t.Fatalf("CallFunc(%s) error: %v", wantType.String(), err)
+		}
+
+		wantValue := testAdd(100, 1)
+		gotValue := callResults[0].Int()
+
+		if int64(wantValue) != gotValue {
+			t.Fatalf("CallFunc(%s) got = %v, want %v", wantType.String(), gotValue, wantValue)
+		}
 	}
 
-	wantType := reflect.TypeOf(testAdd)
+	{
+		asmType, err := asm.FindFuncType("github.com/go-hotfix/assembly.foo.bar", false)
+		if nil != err {
+			t.Fatalf("FindFunc() error: %v", err)
+		}
 
-	if wantType != asmType {
-		t.Fatalf("FindFuncType() got = %v, want %v", asmType, wantType)
+		wantType := reflect.TypeOf(foo.bar)
+
+		if wantType != asmType {
+			t.Fatalf("FindFuncType() got = %v, want %v", asmType, wantType)
+		}
+
+		callResults, err := asm.CallFunc("github.com/go-hotfix/assembly.foo.bar", false, []reflect.Value{reflect.ValueOf(fooInstance)})
+		if nil != err {
+			t.Fatalf("CallFunc(%s) error: %v", wantType.String(), err)
+		}
+
+		wantValue := fooInstance.bar()
+		gotValue := callResults[0].Int()
+
+		if int64(wantValue) != gotValue {
+			t.Fatalf("CallFunc(%s) got = %v, want %v", wantType.String(), gotValue, wantValue)
+		}
 	}
-
-	callResults, err := asm.CallFunc("github.com/go-hotfix/assembly.testAdd", false, []reflect.Value{reflect.ValueOf(100), reflect.ValueOf(1)})
-	if nil != err {
-		t.Fatalf("CallFunc(%s) error: %v", wantType.String(), err)
-	}
-
-	wantValue := testAdd(100, 1)
-	gotValue := callResults[0].Int()
-
-	if int64(wantValue) != gotValue {
-		t.Fatalf("CallFunc(%s) got = %v, want %v", wantType.String(), gotValue, wantValue)
-	}
-
 }
 
 func AssemblyTestFindVariadicFunc(t *testing.T, asm DwarfAssembly) {

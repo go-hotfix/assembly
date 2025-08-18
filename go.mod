@@ -3,8 +3,8 @@ module github.com/go-hotfix/assembly
 go 1.23.0
 
 require (
-	github.com/go-delve/delve v1.24.2
-	golang.org/x/sys v0.32.0
+	github.com/go-delve/delve v1.25.1
+	golang.org/x/sys v0.35.0
 )
 
 require (
