@@ -10,6 +10,10 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 )
 
+// ForeachType iterates over all type definitions, executing the callback function for each type.
+// f is a callback function that receives the type name.
+// Returning false from the callback terminates iteration.
+// Returns an error if iteration fails.
 func (da *dwarfAssembly) ForeachType(f func(name string) bool) error {
 	types, err := da.binaryInfo.Types()
 	if err != nil {
@@ -23,6 +27,9 @@ func (da *dwarfAssembly) ForeachType(f func(name string) bool) error {
 	return nil
 }
 
+// FindType looks up a type definition by name.
+// name specifies the name of the type to find.
+// Returns the reflect.Type object, or an error if not found.
 func (da *dwarfAssembly) FindType(name string) (reflect.Type, error) {
 	dwarfType, err := findType(da.binaryInfo, name)
 	if err != nil {

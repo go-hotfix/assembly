@@ -8,6 +8,9 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 )
 
+// FindGlobal looks up a global variable by name.
+// name specifies the name of the global variable to find.
+// Returns the reflect.Value of the global variable, or an error if not found.
 func (da *dwarfAssembly) FindGlobal(name string) (reflect.Value, error) {
 	if nil == da.globals {
 		da.loadGlobals()
@@ -19,6 +22,9 @@ func (da *dwarfAssembly) FindGlobal(name string) (reflect.Value, error) {
 	return reflect.Value{}, ErrNotFound
 }
 
+// ForeachGlobal iterates over all global variables, executing the callback function for each variable.
+// fn is a callback function that receives the variable name and value.
+// Returning false from the callback terminates iteration.
 func (da *dwarfAssembly) ForeachGlobal(fn func(name string, value reflect.Value) bool) {
 	if nil == da.globals {
 		da.loadGlobals()

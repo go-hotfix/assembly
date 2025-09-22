@@ -10,6 +10,10 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 )
 
+// SearchPluginByName searches for a plugin by name.
+// name specifies the name of the plugin to find.
+// Returns the library file path and memory address where the plugin is located,
+// or an error if not found.
 func (da *dwarfAssembly) SearchPluginByName(name string) (string, uint64, error) {
 	libs, addr, err := da.SearchPlugins()
 	if err != nil {
@@ -23,6 +27,9 @@ func (da *dwarfAssembly) SearchPluginByName(name string) (string, uint64, error)
 	return "", 0, ErrNotFound
 }
 
+// SearchPlugins searches for all available plugins.
+// Returns lists of library file paths and memory addresses for all plugins found,
+// or an error if the search fails.
 func (da *dwarfAssembly) SearchPlugins() ([]string, []uint64, error) {
 
 	bi := da.binaryInfo
