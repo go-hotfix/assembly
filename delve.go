@@ -23,21 +23,6 @@ type funcCallArg struct {
 	isret      bool
 }
 
-//go:linkname findType github.com/go-delve/delve/pkg/proc.(*BinaryInfo).findType
-func findType(bi *proc.BinaryInfo, name string) (godwarf.Type, error)
-
-//go:linkname loadModuleData github.com/go-delve/delve/pkg/proc.LoadModuleData
-func loadModuleData(bi *proc.BinaryInfo, mem proc.MemoryReadWriter) ([]ModuleData, error)
-
-//go:linkname imageToModuleData github.com/go-delve/delve/pkg/proc.(*BinaryInfo).imageToModuleData
-func imageToModuleData(bi *proc.BinaryInfo, image *proc.Image, mds []ModuleData) *ModuleData
-
-//go:linkname dwarfToRuntimeType github.com/go-delve/delve/pkg/proc.dwarfToRuntimeType
-func dwarfToRuntimeType(bi *proc.BinaryInfo, mem proc.MemoryReadWriter, typ godwarf.Type) (typeAddr uint64, typeKind uint64, found bool, err error)
-
-//go:linkname funcCallArgs github.com/go-delve/delve/pkg/proc.funcCallArgs
-func funcCallArgs(fn *proc.Function, bi *proc.BinaryInfo, includeRet bool) (argFrameSize int64, formalArgs []funcCallArg, err error)
-
 type localMemory int
 
 func (mem *localMemory) ReadMemory(data []byte, addr uint64) (int, error) {
@@ -106,3 +91,18 @@ func CreateFuncForCodePtr(ftyp reflect.Type, codePtr uint64) reflect.Value {
 	funcPtr.codePtr = uintptr(codePtr)
 	return newFuncVal
 }
+
+//go:linkname findType github.com/go-delve/delve/pkg/proc.(*BinaryInfo).findType
+func findType(bi *proc.BinaryInfo, name string) (godwarf.Type, error)
+
+//go:linkname loadModuleData github.com/go-delve/delve/pkg/proc.LoadModuleData
+func loadModuleData(bi *proc.BinaryInfo, mem proc.MemoryReadWriter) ([]ModuleData, error)
+
+//go:linkname imageToModuleData github.com/go-delve/delve/pkg/proc.(*BinaryInfo).imageToModuleData
+func imageToModuleData(bi *proc.BinaryInfo, image *proc.Image, mds []ModuleData) *ModuleData
+
+//go:linkname dwarfToRuntimeType github.com/go-delve/delve/pkg/proc.dwarfToRuntimeType
+func dwarfToRuntimeType(bi *proc.BinaryInfo, mem proc.MemoryReadWriter, typ godwarf.Type) (typeAddr uint64, typeKind uint64, found bool, err error)
+
+//go:linkname funcCallArgs github.com/go-delve/delve/pkg/proc.funcCallArgs
+func funcCallArgs(fn *proc.Function, bi *proc.BinaryInfo, includeRet bool) (argFrameSize int64, formalArgs []funcCallArg, err error)
