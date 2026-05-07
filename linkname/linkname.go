@@ -3,7 +3,6 @@
 package linkname
 
 import (
-	"reflect"
 	"runtime"
 	"unsafe"
 )
@@ -28,19 +27,14 @@ func init() {
 }
 
 func buildFuncMap(md unsafe.Pointer) {
-	textStart := *(*uintptr)(unsafe.Pointer(uintptr(md) + uintptr(textOffset)))
+	textStart := *(*uintptr)(unsafe.Add(md, textOffset))
 
 	// Read ftab slice header from moduledata
-	funcTabPtr := *(**functab)(unsafe.Pointer(uintptr(md) + uintptr(funcTabOffset)))
-	funcTabLen := *(*int)(unsafe.Pointer(uintptr(md) + uintptr(funcTabOffset) + unsafe.Sizeof(uintptr(0))))
+	funcTabPtr := *(**functab)(unsafe.Add(md, funcTabOffset))
+	funcTabLen := *(*int)(unsafe.Add(md, funcTabOffset+int(unsafe.Sizeof(uintptr(0)))))
 
 	// Build a Go slice from raw data pointer and length
-	header := reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(funcTabPtr)),
-		Len:  funcTabLen,
-		Cap:  funcTabLen,
-	}
-	funcTabs := *(*[]functab)(unsafe.Pointer(&header))
+	funcTabs := unsafe.Slice(funcTabPtr, funcTabLen)
 
 	for i := range funcTabs {
 		pc := textStart + uintptr(funcTabs[i].entryoff)

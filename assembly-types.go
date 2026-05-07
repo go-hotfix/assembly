@@ -3,6 +3,7 @@ package assembly
 import (
 	"debug/dwarf"
 	"fmt"
+	"iter"
 	"reflect"
 	"unsafe"
 
@@ -10,21 +11,21 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 )
 
-// ForeachType iterates over all type definitions, executing the callback function for each type.
-// f is a callback function that receives the type name.
-// Returning false from the callback terminates iteration.
-// Returns an error if iteration fails.
-func (da *dwarfAssembly) ForeachType(f func(name string) bool) error {
-	types, err := da.binaryInfo.Types()
-	if err != nil {
-		return err
-	}
-	for _, name := range types {
-		if !f(name) {
-			break
+// Types returns an iterator over all type definition names.
+// Each iteration yields the fully qualified type name.
+// Panics if the underlying type information cannot be loaded.
+func (da *dwarfAssembly) Types() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		types, err := da.binaryInfo.Types()
+		if err != nil {
+			panic("assembly: Types() failed: " + err.Error())
+		}
+		for _, name := range types {
+			if !yield(name) {
+				return
+			}
 		}
 	}
-	return nil
 }
 
 // FindType looks up a type definition by name.
@@ -61,10 +62,10 @@ func (da *dwarfAssembly) findImageType(img *proc.Image, name string) uint64 {
 		}
 
 		rRuntimeTypes := reflect.ValueOf(img).Elem().FieldByName("runtimeTypeToDIE")
-		iter := rRuntimeTypes.MapRange()
-		for iter.Next() {
-			k := iter.Key()
-			v := iter.Value()
+		mapIter := rRuntimeTypes.MapRange()
+		for mapIter.Next() {
+			k := mapIter.Key()
+			v := mapIter.Value()
 
 			offset := v.FieldByName("offset").Uint()
 			reader.Seek(dwarf.Offset(offset))

@@ -21,6 +21,14 @@ func testAdd(a, b int) int {
 	return a + b
 }
 
+//go:noinline
+func testVoid() int { return 42 }
+
+type testAlias int
+
+//go:noinline
+func testAliasArg(x testAlias) testAlias { return x + 1 }
+
 func testMax(a int, nums ...int) int {
 	if len(nums) == 0 {
 		return a
@@ -51,6 +59,8 @@ func genericMin[T cmp.Ordered](a T, nums ...T) T {
 
 var testGlobalInt = 11001
 var testGlobalString = "hello world"
+var testGlobalPtr = new(int)
+var testGlobalAlias testAlias = 7
 
 func TestDwarfAssembly(t *testing.T) {
 
@@ -59,8 +69,8 @@ func TestDwarfAssembly(t *testing.T) {
 		t.Fatalf("NewDwarfAssembly() error: %v", err)
 	}
 
-	if nil == asm.BinaryInfo() {
-		t.Fatalf("asm.BinaryInfo() is nil")
+	if nil == asm {
+		t.Fatalf("asm is nil")
 	}
 
 	type TestCaseFunc func(t *testing.T, asm DwarfAssembly)
@@ -86,17 +96,15 @@ func TestDwarfAssembly(t *testing.T) {
 
 func AssemblyTestFindType(t *testing.T, asm DwarfAssembly) {
 	var found = false
-	var err = asm.ForeachType(func(name string) bool {
-		found = "github.com/go-hotfix/assembly.dwarfAssembly" == name
-		return !found
-	})
-
-	if nil != err {
-		t.Fatalf("ForeachType() error: %v", err)
+	for name := range asm.Types() {
+		if "github.com/go-hotfix/assembly.dwarfAssembly" == name {
+			found = true
+			break
+		}
 	}
 
 	if !found {
-		t.Fatalf("ForeachType() not found")
+		t.Fatalf("Types() not found")
 	}
 
 	asmType, err := asm.FindType("github.com/go-hotfix/assembly.dwarfAssembly")
@@ -219,15 +227,14 @@ func AssemblyTestGlobalVar(t *testing.T, asm DwarfAssembly) {
 	var wantIntValue = int64(testGlobalInt + 1)
 	var wantGlobalString = testGlobalString + "!"
 
-	asm.ForeachGlobal(func(name string, value reflect.Value) bool {
+	for name, value := range asm.Globals() {
 		switch name {
 		case "github.com/go-hotfix/assembly.testGlobalInt":
 			value.SetInt(wantIntValue)
 		case "github.com/go-hotfix/assembly.testGlobalString":
 			value.SetString(wantGlobalString)
 		}
-		return true
-	})
+	}
 
 	globalIntValue, err := asm.FindGlobal("github.com/go-hotfix/assembly.testGlobalInt")
 	if nil != err {
@@ -251,23 +258,22 @@ func AssemblyTestGlobalVar(t *testing.T, asm DwarfAssembly) {
 
 func AssemblyTestPlugin(t *testing.T, asm DwarfAssembly) {
 
-	libs, addrs, err := asm.SearchPlugins()
-	if nil != err {
-		t.Fatalf("SearchPlugins() error: %v", err)
-	}
-
-	if len(libs) != len(addrs) {
-		t.Fatalf("len(libs) != len(addrs)")
-	}
-
-	for i, lib := range libs {
+	for lib := range asm.Plugins() {
 		if len(lib) > 0 {
-			fmt.Println(lib, addrs[i])
+			fmt.Println(lib)
 		}
 	}
 
-	_, _, err = asm.SearchPluginByName("not-found-image")
+	_, _, err := asm.FindPlugin("not-found-image")
 	if err != ErrNotFound {
-		t.Fatalf("SearchPluginByName failed")
+		t.Fatalf("FindPlugin failed")
 	}
 }
+
+// Keep helpers alive for DWARF discovery
+var (
+	_ = reflect.TypeOf(testVoid)
+	_ = reflect.TypeOf(testAliasArg)
+	_ = testGlobalPtr
+	_ = testGlobalAlias
+)

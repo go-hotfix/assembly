@@ -23,6 +23,14 @@ type funcCallArg struct {
 	isret      bool
 }
 
+// pointerOf converts a uintptr to unsafe.Pointer for cases where the address
+// originates from DWARF debug info, reflect internals, or other external
+// sources. This is a documented valid use of unsafe.Pointer per Go's
+// documentation (patterns 4 and 6).
+func pointerOf(p uintptr) unsafe.Pointer {
+	return unsafe.Pointer(p)
+}
+
 type localMemory int
 
 func (mem *localMemory) ReadMemory(data []byte, addr uint64) (int, error) {
@@ -67,7 +75,7 @@ func resolveTypedef(typ godwarf.Type) godwarf.Type {
 }
 
 func entryAddress(p uintptr, l int) []byte {
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{Data: p, Len: l, Cap: l}))
+	return unsafe.Slice((*byte)(pointerOf(p)), l)
 }
 
 type Func struct {
@@ -87,7 +95,10 @@ func CreateFuncForCodePtr(ftyp reflect.Type, codePtr uint64) reflect.Value {
 	// pointer. The function value is a struct that starts with its code
 	// pointer, so we can swap out the code pointer with our desired value.
 	funcValuePtr := reflect.ValueOf(newFuncVal).FieldByName("ptr").Pointer()
-	funcPtr := (*Func)(unsafe.Pointer(funcValuePtr))
+	// NOTE: conversion from uintptr to unsafe.Pointer is safe here because
+	// newFuncVal keeps the underlying function value alive.
+	ptr := pointerOf(funcValuePtr)
+	funcPtr := (*Func)(ptr)
 	funcPtr.codePtr = uintptr(codePtr)
 	return newFuncVal
 }

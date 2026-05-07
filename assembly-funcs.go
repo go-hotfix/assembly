@@ -2,28 +2,28 @@ package assembly
 
 import (
 	"fmt"
+	"iter"
 	"reflect"
 
 	"github.com/go-delve/delve/pkg/proc"
 )
 
-// ForeachFunc iterates over all functions, executing the callback function for each function.
-// f is a callback function that receives the function name and entry address.
-// Returning false from the callback terminates iteration.
-func (da *dwarfAssembly) ForeachFunc(f func(name string, pc uint64) bool) {
-	for _, function := range da.binaryInfo.Functions {
-		if function.Entry != 0 {
-			if !f(function.Name, function.Entry) {
-				break
+// Funcs returns an iterator over all function names.
+func (da *dwarfAssembly) Funcs() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for _, function := range da.binaryInfo.Functions {
+			if function.Entry != 0 {
+				if !yield(function.Name) {
+					return
+				}
 			}
 		}
 	}
 }
 
-// FindFuncEntry looks up function entry information by name.
-// name specifies the name of the function to find.
+// FindFunc looks up a function by name.
 // Returns the function object containing entry address details, or an error if not found.
-func (da *dwarfAssembly) FindFuncEntry(name string) (*proc.Function, error) {
+func (da *dwarfAssembly) FindFunc(name string) (*proc.Function, error) {
 	f, err := da.findFunc(name)
 	if err != nil {
 		return nil, err
@@ -31,10 +31,7 @@ func (da *dwarfAssembly) FindFuncEntry(name string) (*proc.Function, error) {
 	return f, nil
 }
 
-// FindFuncPc looks up a function's entry address by name.
-// name specifies the name of the function to find.
-// Returns the program counter (PC) value of the function, or 0 with an error if not found.
-func (da *dwarfAssembly) FindFuncPc(name string) (uint64, error) {
+func (da *dwarfAssembly) findFuncPc(name string) (uint64, error) {
 	f, err := da.findFunc(name)
 	if err != nil {
 		return 0, err
@@ -43,7 +40,6 @@ func (da *dwarfAssembly) FindFuncPc(name string) (uint64, error) {
 }
 
 // FindFuncType looks up a function's type signature by name.
-// name specifies the name of the function to find.
 // variadic indicates whether to treat the function as a variadic function.
 // Returns the reflect.Type of the function, or an error if not found.
 func (da *dwarfAssembly) FindFuncType(name string, variadic bool) (reflect.Type, error) {
@@ -60,12 +56,11 @@ func (da *dwarfAssembly) FindFuncType(name string, variadic bool) (reflect.Type,
 	return ftyp, nil
 }
 
-// FindFunc looks up a function by name and creates a callable reflect.Value.
-// name specifies the name of the function to find.
+// FindFuncValue looks up a function by name and creates a callable reflect.Value.
 // variadic indicates whether to treat the function as a variadic function.
 // Returns a callable reflect.Value of the function, or an error if not found.
-func (da *dwarfAssembly) FindFunc(name string, variadic bool) (reflect.Value, error) {
-	pc, err := da.FindFuncPc(name)
+func (da *dwarfAssembly) FindFuncValue(name string, variadic bool) (reflect.Value, error) {
+	pc, err := da.findFuncPc(name)
 	if err != nil {
 		return reflect.Value{}, err
 	}
@@ -79,7 +74,6 @@ func (da *dwarfAssembly) FindFunc(name string, variadic bool) (reflect.Value, er
 }
 
 // CallFunc invokes a function by name.
-// name specifies the name of the function to call.
 // variadic indicates whether to treat the function as a variadic function.
 // args specifies the list of function arguments.
 // Returns the function call results, or an error if invocation fails.

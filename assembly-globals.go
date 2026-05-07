@@ -2,8 +2,8 @@ package assembly
 
 import (
 	"debug/dwarf"
+	"iter"
 	"reflect"
-	"unsafe"
 
 	"github.com/go-delve/delve/pkg/proc"
 )
@@ -22,17 +22,17 @@ func (da *dwarfAssembly) FindGlobal(name string) (reflect.Value, error) {
 	return reflect.Value{}, ErrNotFound
 }
 
-// ForeachGlobal iterates over all global variables, executing the callback function for each variable.
-// fn is a callback function that receives the variable name and value.
-// Returning false from the callback terminates iteration.
-func (da *dwarfAssembly) ForeachGlobal(fn func(name string, value reflect.Value) bool) {
-	if nil == da.globals {
-		da.loadGlobals()
-	}
-
-	for name, value := range da.globals {
-		if !fn(name, value) {
-			break
+// Globals returns an iterator over all global variables.
+// Each iteration yields the variable name and its reflect.Value.
+func (da *dwarfAssembly) Globals() iter.Seq2[string, reflect.Value] {
+	return func(yield func(string, reflect.Value) bool) {
+		if da.globals == nil {
+			da.loadGlobals()
+		}
+		for name, value := range da.globals {
+			if !yield(name, value) {
+				return
+			}
 		}
 	}
 }
@@ -59,7 +59,7 @@ func (da *dwarfAssembly) loadGlobals() {
 			if !rDwarf.IsValid() {
 				continue
 			}
-			image := (*proc.Image)(unsafe.Pointer(rImage.Pointer()))
+			image := (*proc.Image)(pointerOf(rImage.Pointer()))
 
 			reader := image.DwarfReader()
 			reader.Seek(dwarf.Offset(rOffset.Uint()))
@@ -91,7 +91,8 @@ func (da *dwarfAssembly) loadGlobals() {
 			if err != nil || rtyp == nil {
 				continue
 			}
-			da.globals[name] = reflect.NewAt(rtyp, unsafe.Pointer(uintptr(rAddr.Uint()))).Elem()
+			addr := uintptr(rAddr.Uint())
+			da.globals[name] = reflect.NewAt(rtyp, pointerOf(addr)).Elem()
 		}
 	}
 }

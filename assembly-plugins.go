@@ -1,3 +1,5 @@
+//go:build !darwin
+
 package assembly
 
 import (
@@ -5,78 +7,72 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"iter"
 	"strings"
 
 	"github.com/go-delve/delve/pkg/proc"
 )
 
-// SearchPluginByName searches for a plugin by name.
-// name specifies the name of the plugin to find.
-// Returns the library file path and memory address where the plugin is located,
-// or an error if not found.
-func (da *dwarfAssembly) SearchPluginByName(name string) (string, uint64, error) {
-	libs, addr, err := da.SearchPlugins()
-	if err != nil {
-		return "", 0, err
-	}
+// FindPlugin searches for a plugin by name.
+func (da *dwarfAssembly) FindPlugin(name string) (string, uint64, error) {
+	libs, addrs := da.loadPlugins()
 	for i := 0; i < len(libs); i++ {
 		if strings.LastIndex(libs[i], name) >= 0 {
-			return libs[i], addr[i], nil
+			return libs[i], addrs[i], nil
 		}
 	}
 	return "", 0, ErrNotFound
 }
 
-// SearchPlugins searches for all available plugins.
-// Returns lists of library file paths and memory addresses for all plugins found,
-// or an error if the search fails.
-func (da *dwarfAssembly) SearchPlugins() ([]string, []uint64, error) {
+// Plugins returns an iterator over all plugin library names.
+func (da *dwarfAssembly) Plugins() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		libs, _ := da.loadPlugins()
+		for _, name := range libs {
+			if !yield(name) {
+				return
+			}
+		}
+	}
+}
+
+func (da *dwarfAssembly) loadPlugins() (libs []string, addrs []uint64) {
 
 	bi := da.binaryInfo
 
 	if bi.ElfDynamicSection.Addr == 0 {
-		// no dynamic section, therefore nothing to do here
-		return nil, nil, nil
+		return nil, nil
 	}
 	debugAddr, err := dynamicSearchDebug(bi)
-	if err != nil {
-		return nil, nil, err
-	}
-	if debugAddr == 0 {
-		// no DT_DEBUG entry
-		return nil, nil, nil
+	if err != nil || debugAddr == 0 {
+		return nil, nil
 	}
 
-	// Offsets of the fields of the r_debug and link_map structs,
-	// see /usr/include/elf/link.h for a full description of those structs.
 	debugMapOffset := uint64(bi.Arch.PtrSize())
 
 	r_map, err := readPtr(bi, debugAddr+debugMapOffset)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil
 	}
-
-	var libs []string
-	var addr []uint64
 
 	for {
 		if r_map == 0 {
 			break
 		}
 		if len(libs) > maxNumLibraries {
-			return nil, nil, ErrTooManyLibraries
+			return nil, nil
 		}
 		lm, err := readLinkMapNode(bi, r_map)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil
 		}
 
 		libs = append(libs, lm.name)
-		addr = append(addr, lm.addr)
+		addrs = append(addrs, lm.addr)
 		r_map = lm.next
 	}
 
-	return libs, addr, nil
+	return libs, addrs
 }
 
 const (
